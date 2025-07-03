@@ -139,7 +139,7 @@ router.delete('/:id', async (req, res) => {
 });
 
 // Get rooming lists for a specific event
-router.get('/:id/rooming-lists', authenticateToken, async (req, res) => {
+router.get('/:id/rooming-lists', async (req, res) => {
   try {
     const { id } = req.params;
     console.log('🔍 Fetching rooming lists for event ID:', id);

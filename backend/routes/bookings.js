@@ -148,7 +148,7 @@ router.delete('/:id', async (req, res) => {
 });
 
 // Get rooming lists associated with a booking
-router.get('/:id/rooming-lists', authenticateToken, async (req, res) => {
+router.get('/:id/rooming-lists', async (req, res) => {
   try {
     const { id } = req.params;
     console.log('🔍 Fetching rooming lists for booking ID:', id);
@@ -174,7 +174,7 @@ router.get('/:id/rooming-lists', authenticateToken, async (req, res) => {
 });
 
 // Link a booking to a rooming list
-router.post('/:bookingId/rooming-lists/:roomingListId', authenticateToken, async (req, res) => {
+router.post('/:bookingId/rooming-lists/:roomingListId', async (req, res) => {
   try {
     const { bookingId, roomingListId } = req.params;
     console.log('🔗 Linking booking', bookingId, 'to rooming list', roomingListId);
@@ -219,7 +219,7 @@ router.post('/:bookingId/rooming-lists/:roomingListId', authenticateToken, async
 });
 
 // Unlink a booking from a rooming list
-router.delete('/:bookingId/rooming-lists/:roomingListId', authenticateToken, async (req, res) => {
+router.delete('/:bookingId/rooming-lists/:roomingListId', async (req, res) => {
   try {
     const { bookingId, roomingListId } = req.params;
     console.log('🔗💥 Unlinking booking', bookingId, 'from rooming list', roomingListId);
