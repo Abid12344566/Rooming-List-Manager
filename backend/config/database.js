@@ -1,3 +1,4 @@
+require('dotenv').config();
 const { Pool } = require('pg');
 
 const pool = new Pool({
@@ -33,7 +34,7 @@ const initDatabase = async () => {
         "hotelId" INTEGER NOT NULL,
         "rfpName" VARCHAR(255) NOT NULL,
         "cutOffDate" DATE NOT NULL,
-        status VARCHAR(50) DEFAULT 'Active' CHECK (status IN ('Active', 'Closed', 'Cancelled')),
+        status VARCHAR(50) DEFAULT 'Active' CHECK (status IN ('Active', 'Closed', 'Cancelled', 'completed', 'received', 'archived', 'Confirmed')),
         "agreement_type" VARCHAR(50) NOT NULL CHECK ("agreement_type" IN ('leisure', 'staff', 'artist')),
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
@@ -87,11 +88,23 @@ const clearAllData = async () => {
     await pool.query('DELETE FROM bookings');
     await pool.query('DELETE FROM events');
     
-    // Reset sequences
-    await pool.query('ALTER SEQUENCE bookings_bookingId_seq RESTART WITH 1');
-    await pool.query('ALTER SEQUENCE rooming_lists_roomingListId_seq RESTART WITH 1');
-    await pool.query('ALTER SEQUENCE rooming_list_bookings_id_seq RESTART WITH 1');
-    await pool.query('ALTER SEQUENCE events_eventId_seq RESTART WITH 1');
+    // Reset sequences using a safer approach that handles sequence name variations
+    try {
+      // Get actual sequence names from PostgreSQL system tables
+      const sequences = await pool.query(`
+        SELECT sequence_name 
+        FROM information_schema.sequences 
+        WHERE sequence_schema = 'public'
+      `);
+      
+      for (const seq of sequences.rows) {
+        await pool.query(`ALTER SEQUENCE ${seq.sequence_name} RESTART WITH 1`);
+      }
+      
+      console.log('🔄 Sequences reset successfully');
+    } catch (seqError) {
+      console.log('⚠️ Could not reset sequences (tables may not exist yet):', seqError.message);
+    }
     
     console.log('🗑️ All data cleared from database');
   } catch (error) {
