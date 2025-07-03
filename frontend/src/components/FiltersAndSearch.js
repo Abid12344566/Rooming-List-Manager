@@ -27,7 +27,7 @@ const FiltersAndSearch = () => {
   // Update search when debounced value changes
   useEffect(() => {
     setSearch(debouncedSearch);
-  }, [debouncedSearch, setSearch]);
+  }, [debouncedSearch]); // Removed setSearch from dependencies since dispatch functions are stable
 
   // Close filter dropdown when clicking outside
   useEffect(() => {
