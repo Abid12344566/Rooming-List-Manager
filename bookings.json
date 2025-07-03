@@ -1,0 +1,174 @@
+[
+  {
+    "bookingId": 1,
+    "hotelId": 101,
+    "eventId": 1,
+    "guestName": "John Doe",
+    "guestPhoneNumber": "1234567890",
+    "checkInDate": "2025-09-01",
+    "checkOutDate": "2025-09-05"
+  },
+  {
+    "bookingId": 2,
+    "hotelId": 101,
+    "eventId": 1,
+    "guestName": "Alice Smith",
+    "guestPhoneNumber": "2345678901",
+    "checkInDate": "2025-09-02",
+    "checkOutDate": "2025-09-06"
+  },
+  {
+    "bookingId": 3,
+    "hotelId": 101,
+    "eventId": 1,
+    "guestName": "Bob Johnson",
+    "guestPhoneNumber": "3456789012",
+    "checkInDate": "2025-09-03",
+    "checkOutDate": "2025-09-07"
+  },
+  {
+    "bookingId": 4,
+    "hotelId": 101,
+    "eventId": 1,
+    "guestName": "Sarah Lee",
+    "guestPhoneNumber": "4567890123",
+    "checkInDate": "2025-09-05",
+    "checkOutDate": "2025-09-10"
+  },
+  {
+    "bookingId": 5,
+    "hotelId": 101,
+    "eventId": 1,
+    "guestName": "David Brown",
+    "guestPhoneNumber": "5678901234",
+    "checkInDate": "2025-09-06",
+    "checkOutDate": "2025-09-11"
+  },
+  {
+    "bookingId": 6,
+    "hotelId": 101,
+    "eventId": 1,
+    "guestName": "Emily White",
+    "guestPhoneNumber": "6789012345",
+    "checkInDate": "2025-09-07",
+    "checkOutDate": "2025-09-12"
+  },
+  {
+    "bookingId": 7,
+    "hotelId": 101,
+    "eventId": 1,
+    "guestName": "Michael Black",
+    "guestPhoneNumber": "7890123456",
+    "checkInDate": "2025-09-08",
+    "checkOutDate": "2025-09-13"
+  },
+  {
+    "bookingId": 8,
+    "hotelId": 101,
+    "eventId": 2,
+    "guestName": "Lisa Green",
+    "guestPhoneNumber": "8901234567",
+    "checkInDate": "2025-09-15",
+    "checkOutDate": "2025-09-20"
+  },
+  {
+    "bookingId": 9,
+    "hotelId": 101,
+    "eventId": 2,
+    "guestName": "Paul Gray",
+    "guestPhoneNumber": "9012345678",
+    "checkInDate": "2025-09-16",
+    "checkOutDate": "2025-09-21"
+  },
+  {
+    "bookingId": 10,
+    "hotelId": 101,
+    "eventId": 2,
+    "guestName": "Tom Harris",
+    "guestPhoneNumber": "0123456789",
+    "checkInDate": "2025-09-25",
+    "checkOutDate": "2025-09-30"
+  },
+  {
+    "bookingId": 11,
+    "hotelId": 101,
+    "eventId": 2,
+    "guestName": "Anna Clark",
+    "guestPhoneNumber": "1234567890",
+    "checkInDate": "2025-09-26",
+    "checkOutDate": "2025-09-30"
+  },
+  {
+    "bookingId": 12,
+    "hotelId": 101,
+    "eventId": 2,
+    "guestName": "George King",
+    "guestPhoneNumber": "2345678901",
+    "checkInDate": "2025-10-01",
+    "checkOutDate": "2025-10-05"
+  },
+  {
+    "bookingId": 13,
+    "hotelId": 101,
+    "eventId": 2,
+    "guestName": "Jessica Allen",
+    "guestPhoneNumber": "3456789012",
+    "checkInDate": "2025-10-02",
+    "checkOutDate": "2025-10-06"
+  },
+  {
+    "bookingId": 14,
+    "hotelId": 101,
+    "eventId": 2,
+    "guestName": "Gilliam King",
+    "guestPhoneNumber": "3456789012",
+    "checkInDate": "2025-10-02",
+    "checkOutDate": "2025-10-06"
+  },
+  {
+    "bookingId": 15,
+    "hotelId": 101,
+    "eventId": 2,
+    "guestName": "Natalia Fernandez",
+    "guestPhoneNumber": "(805) 440-2313",
+    "checkInDate": "2025-04-02",
+    "checkOutDate": "2025-05-20"
+  },
+  {
+    "bookingId": 16,
+    "hotelId": 101,
+    "eventId": 2,
+    "guestName": "Campbell Raymond",
+    "guestPhoneNumber": "(910) 581-3774",
+    "checkInDate": "2025-04-15",
+    "checkOutDate": "2025-05-13"
+  },
+  {
+    "bookingId": 17,
+    "hotelId": 101,
+    "eventId": 2,
+    "guestName": "Rhodes Charles",
+    "guestPhoneNumber": "(882) 559-2902",
+    "checkInDate": "2025-04-12",
+    "checkOutDate": "2025-05-17"
+  },
+  {
+    "bookingId": 18,
+    "hotelId": 101,
+    "eventId": 2,
+    "guestName": "Mejia Ferguson",
+    "guestPhoneNumber": "(842) 592-3410",
+    "checkInDate": "2025-03-25",
+    "checkOutDate": "2025-05-10"
+  },
+  {
+    "bookingId": 19,
+    "hotelId": 101,
+    "eventId": 2,
+    "guestName": "Dominique Ayers",
+    "guestPhoneNumber": "(805) 546-3313",
+    "checkInDate": "2025-04-03",
+    "checkOutDate": "2025-05-11"
+  }
+
+]

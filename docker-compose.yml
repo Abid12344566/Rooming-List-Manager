@@ -1,0 +1,72 @@
+version: '3.8'
+
+services:
+  # Backend API with SQLite
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: development
+    container_name: rooming-list-backend
+    environment:
+      NODE_ENV: development
+      JWT_SECRET: your-super-secret-jwt-key-for-docker
+      JWT_EXPIRES_IN: 24h
+      PORT: 3001
+      FRONTEND_URL: http://localhost:3000
+    ports:
+      - "3001:3001"
+    networks:
+      - rooming-list-network
+    volumes:
+      # Mount source code for development
+      - ./backend:/app
+      - /app/node_modules
+      # Mount JSON data files from main directory
+      - ./rooming-lists.json:/app/rooming-lists.json:ro
+      - ./bookings.json:/app/bookings.json:ro
+      - ./rooming-list-bookings.json:/app/rooming-list-bookings.json:ro
+      # Persist SQLite database
+      - sqlite_data:/app/data
+    command: npm run dev
+    healthcheck:
+      test: ["CMD", "node", "healthcheck.js"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Frontend React App
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: development
+    container_name: rooming-list-frontend
+    environment:
+      REACT_APP_API_URL: http://localhost:3001/api
+      CHOKIDAR_USEPOLLING: true
+      WATCHPACK_POLLING: true
+    ports:
+      - "3000:3000"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - rooming-list-network
+    volumes:
+      # Mount source code for development
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/build
+    command: npm start
+    stdin_open: true
+    tty: true
+
+volumes:
+  sqlite_data:
+    driver: local
+
+networks:
+  rooming-list-network:
+    driver: bridge 

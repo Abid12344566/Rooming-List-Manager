@@ -1,0 +1,82 @@
+[
+  {
+    "roomingListId": 1,
+    "eventId": 1,
+    "eventName": "Rolling Loud",
+    "hotelId": 101,
+    "rfpName": "ACL-2025",
+    "cutOffDate": "2025-09-30",
+    "status": "completed",
+    "agreement_type": "leisure"
+  },
+  {
+    "roomingListId": 2,
+    "eventId": 1,
+    "eventName": "Rolling Loud",
+    "hotelId": 101,
+    "rfpName": "ACL-2025",
+    "cutOffDate": "2025-09-30",
+    "status": "received",
+    "agreement_type": "staff"
+  },
+  {
+    "roomingListId": 3,
+    "eventId": 1,
+    "eventName": "Rolling Loud",
+    "hotelId": 101,
+    "rfpName": "ACL-2024",
+    "cutOffDate": "2024-09-30",
+    "status": "archived",
+    "agreement_type": "leisure"
+  },
+  {
+    "roomingListId": 4,
+    "eventId": 2,
+    "eventName": "Ultra Miami",
+    "hotelId": 101,
+    "rfpName": "RLM-2025",
+    "cutOffDate": "2025-09-30",
+    "status": "completed",
+    "agreement_type": "leisure"
+  },
+  {
+    "roomingListId": 5,
+    "eventId": 2,
+    "eventName": "Ultra Miami",
+    "hotelId": 101,
+    "rfpName": "RLM-2025",
+    "cutOffDate": "2025-10-15",
+    "status": "completed",
+    "agreement_type": "staff"
+  },
+  {
+    "roomingListId": 6,
+    "eventId": 2,
+    "eventName": "Ultra Miami",
+    "hotelId": 101,
+    "rfpName": "RLM-2025",
+    "cutOffDate": "2025-10-15",
+    "status": "Confirmed",
+    "agreement_type": "leisure"
+  },
+  {
+    "roomingListId": 7,
+    "eventId": 2,
+    "eventName": "Ultra Miami",
+    "hotelId": 101,
+    "rfpName": "RLM-2026",
+    "cutOffDate": "2026-10-25",
+    "status": "received",
+    "agreement_type": "leisure"
+  },
+  {
+    "roomingListId": 8,
+    "eventId": 2,
+    "eventName": "Ultra Miami",
+    "hotelId": 101,
+    "rfpName": "RLM-2026",
+    "cutOffDate": "2026-10-25",
+    "status": "received",
+    "agreement_type": "staff"
+  }
+]
