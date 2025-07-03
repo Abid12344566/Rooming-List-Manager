@@ -8,15 +8,13 @@ const api = axios.create({
   timeout: 10000, // 10 second timeout
 });
 
-// Request interceptor to add auth token
+// Request interceptor to add auth token (optional for now)
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
       console.log('🔑 Adding auth token to request:', config.method?.toUpperCase(), config.url);
-    } else {
-      console.log('⚠️ No auth token found for request:', config.method?.toUpperCase(), config.url);
     }
     return config;
   },
@@ -30,12 +28,10 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => {
     console.log('✅ API SUCCESS:', response.config.method?.toUpperCase(), response.config.url, 
-                'Status:', response.status, 'Data length:', 
-                Array.isArray(response.data) ? response.data.length : 'N/A');
+                'Status:', response.status);
     return response;
   },
   (error) => {
-    // ✅ 6. Check Network/API Call on Frontend - Detailed error logging
     console.error('❌ API ERROR DETAILS:', {
       method: error.config?.method?.toUpperCase(),
       url: error.config?.url,
@@ -43,22 +39,21 @@ api.interceptors.response.use(
       statusText: error.response?.statusText,
       data: error.response?.data,
       message: error.message,
-      code: error.code,
-      stack: error.stack
+      code: error.code
     });
 
-    // ✅ 5. Check if Token Is Required
+    // Handle authentication errors (optional)
     if (error.response?.status === 401) {
       console.error('🚫 AUTHENTICATION ERROR: Token missing or expired');
       localStorage.removeItem('token');
-      window.location.href = '/login';
+      // Don't redirect to login for now since auth is optional
     }
 
     return Promise.reject(error);
   }
 );
 
-// Auth API
+// Auth API (optional for now)
 export const authAPI = {
   login: async (credentials) => {
     try {
@@ -97,12 +92,6 @@ export const roomingListsAPI = {
     try {
       console.log('📋 Fetching rooming lists with filters:', filters);
       
-      // ✅ 10. Frontend Error Logging - Check token before request
-      const token = localStorage.getItem('token');
-      if (!token) {
-        throw new Error('No authentication token found');
-      }
-
       const params = new URLSearchParams();
       Object.keys(filters).forEach(key => {
         if (filters[key]) {
@@ -115,70 +104,136 @@ export const roomingListsAPI = {
       
       const response = await api.get(url);
       
-      // ✅ Additional validation
-      if (!Array.isArray(response.data)) {
-        console.error('❌ UNEXPECTED RESPONSE FORMAT: Expected array, got:', typeof response.data, response.data);
+      // Handle new response format with status/data structure
+      const data = response.data.data || response.data;
+      
+      if (!Array.isArray(data)) {
+        console.error('❌ UNEXPECTED RESPONSE FORMAT: Expected array, got:', typeof data, data);
         throw new Error('Invalid response format from server');
       }
 
-      console.log('✅ Successfully fetched', response.data.length, 'rooming lists');
-      return response;
+      console.log('✅ Successfully fetched', data.length, 'rooming lists');
+      return { ...response, data };
     } catch (error) {
-      // ✅ 10. Frontend Error Logging - Detailed fetch error
-      if (error.response) {
-        // Server responded with error status
-        console.error('❌ SERVER ERROR RESPONSE:', {
-          status: error.response.status,
-          statusText: error.response.statusText,
-          data: error.response.data,
-          headers: error.response.headers
-        });
-      } else if (error.request) {
-        // Request was made but no response received
-        console.error('❌ NO RESPONSE FROM SERVER:', {
-          request: error.request,
-          message: 'Server did not respond - check if backend is running on port 3001'
-        });
-      } else {
-        // Something else happened
-        console.error('❌ REQUEST SETUP ERROR:', error.message);
-      }
-      
+      console.error('❌ FAILED to fetch rooming lists:', error.response?.data || error.message);
       throw error;
     }
   },
 
-  getById: (id) => api.get(`/rooming-lists/${id}`),
+  getById: async (id) => {
+    try {
+      const response = await api.get(`/rooming-lists/${id}`);
+      return { ...response, data: response.data.data || response.data };
+    } catch (error) {
+      console.error('❌ FAILED to fetch rooming list:', id, error.response?.data || error.message);
+      throw error;
+    }
+  },
+
   getBookings: async (roomingListId) => {
     try {
       console.log('📊 Fetching bookings for rooming list:', roomingListId);
       const response = await api.get(`/rooming-lists/${roomingListId}/bookings`);
-      console.log('✅ Successfully fetched', response.data.length, 'bookings');
-      return response;
+      const data = response.data.data || response.data;
+      console.log('✅ Successfully fetched', data.length, 'bookings for rooming list', roomingListId);
+      console.log('📝 Bookings:', data); // Log to console as requested
+      return { ...response, data };
     } catch (error) {
       console.error('❌ FAILED to fetch bookings for rooming list:', roomingListId, error.response?.data || error.message);
       throw error;
     }
   },
-  create: (data) => api.post('/rooming-lists', data),
-  update: (id, data) => api.put(`/rooming-lists/${id}`, data),
-  delete: (id) => api.delete(`/rooming-lists/${id}`),
+
+  create: async (data) => {
+    try {
+      const response = await api.post('/rooming-lists', data);
+      return { ...response, data: response.data.data || response.data };
+    } catch (error) {
+      console.error('❌ FAILED to create rooming list:', error.response?.data || error.message);
+      throw error;
+    }
+  },
+
+  update: async (id, data) => {
+    try {
+      const response = await api.put(`/rooming-lists/${id}`, data);
+      return { ...response, data: response.data.data || response.data };
+    } catch (error) {
+      console.error('❌ FAILED to update rooming list:', id, error.response?.data || error.message);
+      throw error;
+    }
+  },
+
+  delete: async (id) => {
+    try {
+      const response = await api.delete(`/rooming-lists/${id}`);
+      return { ...response, data: response.data.data || response.data };
+    } catch (error) {
+      console.error('❌ FAILED to delete rooming list:', id, error.response?.data || error.message);
+      throw error;
+    }
+  }
+};
+
+// Bookings API
+export const bookingsAPI = {
+  getAll: async () => {
+    try {
+      const response = await api.get('/bookings');
+      return { ...response, data: response.data.data || response.data };
+    } catch (error) {
+      console.error('❌ FAILED to fetch bookings:', error.response?.data || error.message);
+      throw error;
+    }
+  },
+
+  getById: async (id) => {
+    try {
+      const response = await api.get(`/bookings/${id}`);
+      return { ...response, data: response.data.data || response.data };
+    } catch (error) {
+      console.error('❌ FAILED to fetch booking:', id, error.response?.data || error.message);
+      throw error;
+    }
+  }
 };
 
 // Data Management API
 export const dataAPI = {
   insertSampleData: async () => {
     try {
-      console.log('🌱 Inserting sample data...');
-      const response = await api.post('/data/insert-sample-data');
-      console.log('✅ Sample data inserted successfully');
+      console.log('🌱 Inserting sample data from JSON files...');
+      console.log('⚠️ This will clear all existing data and reload from JSON files');
+      const response = await api.post('/data/insert');
+      console.log('✅ Sample data inserted successfully:', response.data);
       return response;
     } catch (error) {
       console.error('❌ FAILED to insert sample data:', error.response?.data || error.message);
       throw error;
     }
   },
-  clearAll: () => api.delete('/data/clear-all'),
+
+  clearAll: async () => {
+    try {
+      console.log('🗑️ Clearing all data...');
+      const response = await api.delete('/data/clear');
+      console.log('✅ All data cleared successfully');
+      return response;
+    } catch (error) {
+      console.error('❌ FAILED to clear data:', error.response?.data || error.message);
+      throw error;
+    }
+  },
+
+  getStatus: async () => {
+    try {
+      const response = await api.get('/data/status');
+      return { ...response, data: response.data.data || response.data };
+    } catch (error) {
+      console.error('❌ FAILED to get data status:', error.response?.data || error.message);
+      throw error;
+    }
+  }
 };
 
 export default api; 

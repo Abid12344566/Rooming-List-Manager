@@ -8,9 +8,10 @@ const pool = new Pool({
   password: process.env.DB_PASSWORD || 'password',
 });
 
-// Database initialization
+// Database initialization with exact schema requirements
 const initDatabase = async () => {
   try {
+    // Create Bookings Table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS bookings (
         "bookingId" SERIAL PRIMARY KEY,
@@ -24,6 +25,7 @@ const initDatabase = async () => {
       );
     `);
 
+    // Create Rooming Lists Table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS rooming_lists (
         "roomingListId" SERIAL PRIMARY KEY,
@@ -31,22 +33,24 @@ const initDatabase = async () => {
         "hotelId" INTEGER NOT NULL,
         "rfpName" VARCHAR(255) NOT NULL,
         "cutOffDate" DATE NOT NULL,
-        status VARCHAR(50) DEFAULT 'Active',
-        "agreement_type" VARCHAR(50) NOT NULL,
+        status VARCHAR(50) DEFAULT 'Active' CHECK (status IN ('Active', 'Closed', 'Cancelled')),
+        "agreement_type" VARCHAR(50) NOT NULL CHECK ("agreement_type" IN ('leisure', 'staff', 'artist')),
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
 
+    // Create Rooming List Bookings Table (Junction table)
     await pool.query(`
       CREATE TABLE IF NOT EXISTS rooming_list_bookings (
         id SERIAL PRIMARY KEY,
-        "roomingListId" INTEGER REFERENCES rooming_lists("roomingListId") ON DELETE CASCADE,
-        "bookingId" INTEGER REFERENCES bookings("bookingId") ON DELETE CASCADE,
+        "roomingListId" INTEGER NOT NULL REFERENCES rooming_lists("roomingListId") ON DELETE CASCADE,
+        "bookingId" INTEGER NOT NULL REFERENCES bookings("bookingId") ON DELETE CASCADE,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         UNIQUE("roomingListId", "bookingId")
       );
     `);
 
+    // Create Events Table (for reference)
     await pool.query(`
       CREATE TABLE IF NOT EXISTS events (
         "eventId" SERIAL PRIMARY KEY,
@@ -56,6 +60,7 @@ const initDatabase = async () => {
       );
     `);
 
+    // Create Users Table (for authentication)
     await pool.query(`
       CREATE TABLE IF NOT EXISTS users (
         id SERIAL PRIMARY KEY,
@@ -66,11 +71,33 @@ const initDatabase = async () => {
       );
     `);
 
-    console.log('Database tables created successfully');
+    console.log('✅ PostgreSQL database tables created successfully');
+    console.log('📋 Tables: bookings, rooming_lists, rooming_list_bookings, events, users');
   } catch (error) {
-    console.error('Error creating database tables:', error);
+    console.error('❌ Error creating database tables:', error);
     throw error;
   }
 };
 
-module.exports = { pool, initDatabase };
+// Clear all data from tables
+const clearAllData = async () => {
+  try {
+    await pool.query('DELETE FROM rooming_list_bookings');
+    await pool.query('DELETE FROM rooming_lists');
+    await pool.query('DELETE FROM bookings');
+    await pool.query('DELETE FROM events');
+    
+    // Reset sequences
+    await pool.query('ALTER SEQUENCE bookings_bookingId_seq RESTART WITH 1');
+    await pool.query('ALTER SEQUENCE rooming_lists_roomingListId_seq RESTART WITH 1');
+    await pool.query('ALTER SEQUENCE rooming_list_bookings_id_seq RESTART WITH 1');
+    await pool.query('ALTER SEQUENCE events_eventId_seq RESTART WITH 1');
+    
+    console.log('🗑️ All data cleared from database');
+  } catch (error) {
+    console.error('❌ Error clearing database:', error);
+    throw error;
+  }
+};
+
+module.exports = { pool, initDatabase, clearAllData };

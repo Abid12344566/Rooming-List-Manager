@@ -1,547 +1,370 @@
-# 🏨 Rooming List Management System
+# 🏨 Rooming List Manager
 
-A comprehensive full-stack application for managing hotel booking rooming lists with real-time data visualization, built with React, Node.js, and SQLite. This enterprise-grade solution provides intuitive management of rooming lists grouped by events with advanced filtering, search capabilities, and detailed booking management.
+A full-stack web application for managing rooming lists and bookings, built with React.js frontend and Node.js backend using PostgreSQL database.
 
-## 📸 Preview
-
-The application follows a modern card-based design pattern with event grouping, matching the provided design specifications:
-
-- **Event-grouped rooming lists** with horizontal scrollable cards
-- **Clean, professional UI** with Tailwind CSS styling
-- **Detailed booking modals** with comprehensive guest information
-- **Real-time filtering and search** capabilities
-- **Responsive design** for all device types
-
-## ✨ Key Features
-
-### 🎯 Core Functionality
-- **📋 Rooming List Management**: Complete CRUD operations for rooming lists
-- **🎪 Event-Based Organization**: Automatic grouping by events (Rolling Loud, Ultra Miami, etc.)
-- **🏨 Booking Management**: Detailed booking tracking with guest information
-- **🔍 Advanced Search & Filtering**: Real-time search with status-based filtering
-- **📊 Data Visualization**: Beautiful modal displays for booking details
-- **📱 Responsive Design**: Works seamlessly on desktop, tablet, and mobile
-
-### 🔐 Authentication & Security
-- **JWT-based Authentication**: Secure token-based user sessions
-- **Protected Routes**: Middleware-based route protection
-- **Password Security**: bcrypt hashing for user credentials
-- **Rate Limiting**: Development-friendly with production protection
-
-### 🚀 Developer Experience
-- **Hot Reload Development**: Instant code changes in development
-- **Docker Support**: Complete containerized setup
-- **JSON Data Loading**: Load data from external JSON files
-- **Comprehensive Logging**: Detailed console logging for debugging
-- **Health Checks**: Container and API health monitoring
-
-## 🏗️ Architecture Overview
-
-### Design Philosophy
-
-Our architecture follows **separation of concerns** with a clear three-tier approach:
+## 🏗️ Architecture
 
 ```
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   Presentation  │    │   Application   │    │      Data       │
-│      Layer      │◄──►│      Layer      │◄──►│      Layer      │
-│                 │    │                 │    │                 │
-│  React Frontend │    │ Node.js Backend │    │  SQLite Database│
-│  - Components   │    │ - RESTful API   │    │  - Relational   │
-│  - State Mgmt   │    │ - Business Logic│    │  - ACID Compliant│
-│  - UI/UX        │    │ - Authentication│    │  - File-based   │
-└─────────────────┘    └─────────────────┘    └─────────────────┘
+Frontend: React.js + Tailwind CSS
+Backend: Node.js + Express.js  
+Database: PostgreSQL
+API: RESTful endpoints
 ```
 
-### Key Architectural Decisions
+## 📋 Database Schema
 
-#### 1. **SQLite Over PostgreSQL**
-- **Why**: Simplified deployment, no external database dependencies
-- **Benefits**: Single-file database, ACID compliance, excellent for development
-- **Trade-offs**: Suitable for moderate concurrent users, perfect for this use case
+### Tables Structure:
 
-#### 2. **React Context + useReducer**
-- **Why**: Predictable state management without Redux complexity
-- **Benefits**: Built-in React patterns, excellent DevTools support
-- **Implementation**: Centralized state with action-based mutations
+**Bookings Table:**
+- `bookingId` - Unique identifier for each booking
+- `hotelId` - ID of the hotel where the booking is made
+- `eventId` - ID of the event associated with the booking
+- `guestName` - Name of the guest making the booking
+- `guestPhoneNumber` - Phone number of the guest
+- `checkInDate` - Check-in date for the booking
+- `checkOutDate` - Check-out date for the booking
 
-#### 3. **JSON-File Data Loading**
-- **Why**: External data source flexibility and easy data management
-- **Benefits**: Version-controlled data, easy updates, staging environments
-- **Implementation**: Runtime JSON parsing with comprehensive error handling
+**Rooming Lists Table:**
+- `roomingListId` - Unique identifier for each rooming list
+- `eventId` - ID of the event related to the rooming list
+- `hotelId` - ID of the hotel associated with the rooming list
+- `rfpName` - Name of the Request for Proposal
+- `cutOffDate` - The cut-off date for the rooming list
+- `status` - Current status ("Active", "Closed", "Cancelled")
+- `agreement_type` - Type of agreement ("leisure", "staff", "artist")
 
-#### 4. **Component-Based Architecture**
-```
-App
-├── Header (Authentication UI)
-├── Dashboard (Main Container)
-│   ├── FiltersAndSearch (Controls)
-│   └── EventGroup (Event Grouping)
-│       └── RoomingListCard (Individual Cards)
-├── BookingsModal (Detailed View)
-└── AuthModal (Login/Register)
-```
+**Rooming List Bookings Table (Junction):**
+- `roomingListId` - Foreign key referencing rooming lists
+- `bookingId` - Foreign key referencing bookings
 
-### Database Schema
+### Relationships:
+- A Rooming List can have many Bookings (via the Rooming List Bookings Table)
+- Each Booking belongs to a Rooming List and is tied to an event
 
-Our relational schema ensures data integrity with proper foreign key relationships:
-
-```sql
-┌─────────────┐    ┌─────────────────┐    ┌─────────────┐
-│    users    │    │     events      │    │   bookings  │
-│─────────────│    │─────────────────│    │─────────────│
-│ id (PK)     │    │ eventId (PK)    │    │ bookingId   │
-│ username    │    │ eventName       │    │ hotelId     │
-│ email       │    │ description     │    │ eventId (FK)│
-│ password    │    │ created_at      │    │ guestName   │
-│ created_at  │    └─────────────────┘    │ guestPhone  │
-└─────────────┘                           │ checkIn     │
-                                          │ checkOut    │
-                                          │ created_at  │
-                   ┌─────────────────┐    └─────────────┘
-                   │ rooming_lists   │
-                   │─────────────────│    ┌─────────────────────┐
-                   │ roomingListId   │    │ rooming_list_bookings│
-                   │ eventId (FK)    │◄──►│─────────────────────│
-                   │ hotelId         │    │ id (PK)             │
-                   │ rfpName         │    │ roomingListId (FK)  │
-                   │ cutOffDate      │    │ bookingId (FK)      │
-                   │ status          │    │ created_at          │
-                   │ agreement_type  │    └─────────────────────┘
-                   │ created_at      │
-                   └─────────────────┘
-```
-
-## 🚀 Quick Start Guide
+## 🚀 Setup Instructions
 
 ### Prerequisites
-- **Node.js** v18+ (with npm)
-- **Git** for version control
-- **Docker** (optional, for containerized setup)
 
-### Option 1: Local Development Setup
+1. **Node.js** (v18+ recommended)
+2. **PostgreSQL** (v12+ recommended)
+3. **npm** or **yarn**
+
+### 1. PostgreSQL Database Setup
+
+#### Option A: Local PostgreSQL Installation
+
+1. Install PostgreSQL:
+   ```bash
+   # Windows (using Chocolatey)
+   choco install postgresql
+   
+   # macOS (using Homebrew)
+   brew install postgresql
+   
+   # Ubuntu/Debian
+   sudo apt-get install postgresql postgresql-contrib
+   ```
+
+2. Start PostgreSQL service:
+   ```bash
+   # Windows
+   net start postgresql
+   
+   # macOS
+   brew services start postgresql
+   
+   # Linux
+   sudo systemctl start postgresql
+   ```
+
+3. Create database and user:
+   ```bash
+   # Connect to PostgreSQL
+   psql -U postgres
+   
+   # Create database
+   CREATE DATABASE rooming_list_db;
+   
+   # Create user (optional)
+   CREATE USER rooming_user WITH ENCRYPTED PASSWORD 'your_password';
+   GRANT ALL PRIVILEGES ON DATABASE rooming_list_db TO rooming_user;
+   
+   # Exit
+   \q
+   ```
+
+#### Option B: Using Docker
 
 ```bash
-# 1. Clone the repository
-git clone <repository-url>
-cd rooming-list-management-app
-
-# 2. Install all dependencies
-npm run install:all
-
-# 3. Start development servers (runs both frontend and backend)
-npm run dev
+# Run PostgreSQL in Docker
+docker run --name postgres-rooming \
+  -e POSTGRES_DB=rooming_list_db \
+  -e POSTGRES_USER=postgres \
+  -e POSTGRES_PASSWORD=password \
+  -p 5432:5432 \
+  -d postgres:14
 ```
 
-**Access your application:**
-- 🌐 Frontend: http://localhost:3000
-- ⚡ Backend API: http://localhost:3001
-- 📖 API Health: http://localhost:3001/health
+### 2. Environment Configuration
 
-### Option 2: Docker Setup (Recommended)
+Create environment files:
 
-```bash
-# 1. Clone and navigate
-git clone <repository-url>
-cd rooming-list-management-app
-
-# 2. Start with Docker Compose
-npm run docker:up
-# OR
-docker-compose up --build
-
-# 3. Stop when done
-npm run docker:down
-```
-
-### First Steps After Setup
-
-1. **Open** http://localhost:3000
-2. **Register** a new account or **Login** with test credentials:
-   - Username: `testuser`
-   - Password: `password123`
-3. **Load Sample Data** using the "Insert Bookings and Rooming Lists" button
-4. **Explore** the rooming lists grouped by events
-5. **Click "View Bookings"** to see detailed booking information in the modal
-
-## 📋 Detailed Setup Instructions
-
-### Manual Setup (Alternative)
-
-**Backend Setup:**
-```bash
-cd backend
-npm install
-npm run dev  # Starts on port 3001
-```
-
-**Frontend Setup:**
-```bash
-cd frontend
-npm install
-npm start    # Starts on port 3000
-```
-
-### Environment Configuration
-
-**Backend Environment (Optional):**
-Create `backend/.env`:
+**Backend (`backend/.env`):**
 ```env
-# JWT Configuration
-JWT_SECRET=your-super-secret-jwt-key-here
-JWT_EXPIRES_IN=24h
+# Database Configuration
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=rooming_list_db
+DB_USER=postgres
+DB_PASSWORD=password
 
 # Server Configuration
 PORT=3001
 NODE_ENV=development
 
-# CORS Configuration
+# Frontend Configuration
 FRONTEND_URL=http://localhost:3000
+
+# Security (optional)
+JWT_SECRET=your-super-secret-jwt-key
 ```
 
-**Frontend Environment (Optional):**
-Create `frontend/.env`:
+**Frontend (`frontend/.env`):**
 ```env
 REACT_APP_API_URL=http://localhost:3001/api
 ```
 
-## 🐳 Docker Configuration
+### 3. Installation & Startup
 
-### Development Mode
-Our Docker setup provides a complete development environment with hot-reload:
+1. **Install dependencies:**
+   ```bash
+   # Backend dependencies
+   cd backend
+   npm install
+   
+   # Frontend dependencies
+   cd ../frontend
+   npm install
+   ```
 
-```yaml
-# Simplified docker-compose structure
-services:
-  backend:
-    - Hot-reload enabled
-    - JSON files mounted from host
-    - SQLite database persisted
-    - Health checks configured
-  
-  frontend:
-    - React dev server with hot-reload
-    - Source code mounted for live changes
-    - Optimized for development workflow
-```
+2. **Start the backend server:**
+   ```bash
+   cd backend
+   npm start
+   # Server will run on http://localhost:3001
+   ```
 
-### Production Mode
+3. **Start the frontend development server:**
+   ```bash
+   cd frontend
+   npm start
+   # Frontend will run on http://localhost:3000
+   ```
+
+4. **Access the application:**
+   - Open your browser to http://localhost:3000
+   - The backend API will be available at http://localhost:3001
+
+## 🎯 Key Features
+
+### ✅ Insert Bookings and Rooming Lists
+- **Location**: Click the "Insert Bookings and Rooming Lists" button in the filters section
+- **Functionality**: 
+  - Clears all existing data from the database
+  - Reads data from JSON files (`rooming-lists.json`, `bookings.json`, `rooming-list-bookings.json`)
+  - Inserts data into PostgreSQL tables with proper relationships
+  - Automatically refreshes the UI with new data
+
+### ✅ Dynamic Rooming List Cards
+- **Data Source**: Fetched dynamically from PostgreSQL database
+- **Display Information**:
+  - RFP Name
+  - Status (Active/Closed/Cancelled)
+  - Cut-off Date
+  - Agreement Type (leisure/staff/artist)
+  - Event Name
+  - Hotel ID
+  - Booking Count
+
+### ✅ View Bookings Feature
+- **Location**: "View Bookings" button on each rooming list card
+- **Functionality**:
+  - Fetches all bookings associated with the selected rooming list
+  - **Logs booking details to browser console** (as required)
+  - Shows booking information in both console and modal
+  - Displays guest names, phone numbers, check-in/out dates
+
+## 🔗 API Endpoints
+
+### Rooming Lists
+- `GET /api/rooming-lists` - Get all rooming lists
+- `GET /api/rooming-lists/:id` - Get specific rooming list
+- `GET /api/rooming-lists/:id/bookings` - Get bookings for rooming list
+- `POST /api/rooming-lists` - Create new rooming list
+- `PUT /api/rooming-lists/:id` - Update rooming list
+- `DELETE /api/rooming-lists/:id` - Delete rooming list
+
+### Bookings
+- `GET /api/bookings` - Get all bookings
+- `GET /api/bookings/:id` - Get specific booking
+- `POST /api/bookings` - Create new booking
+- `PUT /api/bookings/:id` - Update booking
+- `DELETE /api/bookings/:id` - Delete booking
+
+### Data Management
+- `POST /api/data/insert` - Clear and insert data from JSON files
+- `DELETE /api/data/clear` - Clear all data
+- `GET /api/data/status` - Get data status
+
+### Events
+- `GET /api/events` - Get all events
+- `GET /api/events/:id` - Get specific event
+- `POST /api/events` - Create new event
+- `PUT /api/events/:id` - Update event
+- `DELETE /api/events/:id` - Delete event
+
+## 🧪 Testing the Application
+
+1. **Start both servers** (backend on :3001, frontend on :3000)
+
+2. **Insert sample data**:
+   - Click "Insert Bookings and Rooming Lists" button
+   - Wait for success message
+   - Verify rooming list cards appear
+
+3. **Test View Bookings**:
+   - Click "View Bookings" button on any rooming list card
+   - Check browser console for detailed booking logs
+   - Verify modal shows booking information
+
+4. **Verify data persistence**:
+   - Refresh the page
+   - Data should remain (stored in PostgreSQL)
+
+## 📊 Console Logging
+
+When clicking "View Bookings", the following information is logged to the browser console:
+- RFP Name
+- Event Name
+- Hotel ID
+- Total booking count
+- Cut-off Date
+- Agreement Type
+- Status
+- Detailed booking information in table format
+- Individual booking details
+
+## 🔧 Development Scripts
+
+**Backend:**
 ```bash
-# Build production images
-docker-compose -f docker-compose.yml up --build --target production
-
-# Features:
-# - Nginx-served React build
-# - Optimized Node.js backend
-# - Security hardened containers
+npm start        # Start production server
+npm run dev      # Start with nodemon (auto-restart)
+npm test         # Run tests
 ```
 
-## 📊 Data Management
-
-### JSON File Structure
-
-The application loads data from three JSON files in the root directory:
-
-**`rooming-lists.json`**: Core rooming list data
-```json
-[
-  {
-    "roomingListId": 1,
-    "eventId": 1,
-    "eventName": "Rolling Loud",
-    "hotelId": 101,
-    "rfpName": "ACL-2025",
-    "cutOffDate": "2025-09-30",
-    "status": "completed",
-    "agreement_type": "leisure"
-  }
-]
-```
-
-**`bookings.json`**: Individual booking records
-```json
-[
-  {
-    "bookingId": 1,
-    "hotelId": 101,
-    "eventId": 1,
-    "guestName": "John Doe",
-    "guestPhoneNumber": "1234567890",
-    "checkInDate": "2025-09-01",
-    "checkOutDate": "2025-09-05"
-  }
-]
-```
-
-**`rooming-list-bookings.json`**: Relationship mapping
-```json
-[
-  {
-    "roomingListId": 1,
-    "bookingId": 1
-  }
-]
-```
-
-### Data Loading Process
-
-1. **Clear existing data** (maintains referential integrity)
-2. **Extract unique events** from rooming lists
-3. **Insert in dependency order**: Events → Bookings → Rooming Lists → Relationships
-4. **Comprehensive error handling** with specific error messages
-
-## 🔌 API Documentation
-
-### Authentication Endpoints
+**Frontend:**
 ```bash
-POST /api/auth/register    # Register new user
-POST /api/auth/login       # User login
+npm start        # Start development server
+npm run build    # Build for production
+npm test         # Run tests
 ```
 
-### Rooming Lists API
+## 🐳 Docker Support
+
+The project includes Docker configuration:
+
 ```bash
-GET    /api/rooming-lists              # Get all rooming lists (with filtering)
-GET    /api/rooming-lists/:id          # Get specific rooming list
-GET    /api/rooming-lists/:id/bookings # Get bookings for rooming list
-POST   /api/rooming-lists              # Create new rooming list
-PUT    /api/rooming-lists/:id          # Update rooming list
-DELETE /api/rooming-lists/:id          # Delete rooming list
+# Build and run with Docker Compose
+docker-compose up --build
+
+# Run in background
+docker-compose up -d
+
+# Stop services
+docker-compose down
 ```
 
-### Events API
+## 🔒 Authentication
+
+Authentication is currently **optional**. The application works without login, but authentication endpoints are available for future use:
+- `POST /api/auth/login`
+- `POST /api/auth/register`
+
+## 📁 Project Structure
+
+```
+rooming-list-manager/
+├── backend/
+│   ├── config/
+│   │   └── database.js          # PostgreSQL configuration
+│   │   └── routes/
+│   │       ├── roomingLists.js      # Rooming list endpoints
+│   │       ├── bookings.js          # Booking endpoints
+│   │       ├── data.js              # Data management
+│   │       └── events.js            # Event endpoints
+│   ├── middleware/
+│   └── server.js                # Express server setup
+├── frontend/
+│   ├── src/
+│   │   ├── components/
+│   │   │   ├── Dashboard.js     # Main dashboard
+│   │   │   ├── RoomingListCard.js # Individual cards
+│   │   │   └── FiltersAndSearch.js # Insert button
+│   │   ├── services/
+│   │   │   └── api.js           # API client
+│   │   └── context/
+│   │       └── AppContext.js    # State management
+├── rooming-lists.json           # Sample rooming lists data
+├── bookings.json                # Sample bookings data
+├── rooming-list-bookings.json   # Sample relationships data
+└── README.md
+```
+
+## 🆘 Troubleshooting
+
+### Database Connection Issues
 ```bash
-GET    /api/events                     # Get all events
-GET    /api/events/:id                 # Get specific event
-GET    /api/events/:id/rooming-lists   # Get rooming lists for event
-POST   /api/events                     # Create new event
-PUT    /api/events/:id                 # Update event
-DELETE /api/events/:id                 # Delete event
+# Check PostgreSQL status
+sudo systemctl status postgresql
+
+# Check if database exists
+psql -U postgres -l
+
+# Test connection
+psql -U postgres -d rooming_list_db -c "SELECT NOW();"
 ```
 
-### Bookings API
-```bash
-GET    /api/bookings                   # Get all bookings
-GET    /api/bookings/:id               # Get specific booking
-POST   /api/bookings                   # Create new booking
-PUT    /api/bookings/:id               # Update booking
-DELETE /api/bookings/:id               # Delete booking
-```
+### Port Conflicts
+- Backend default: 3001
+- Frontend default: 3000
+- PostgreSQL default: 5432
 
-### Data Management API
-```bash
-POST   /api/data/insert-sample-data    # Load data from JSON files
-DELETE /api/data/clear-all             # Clear all data
-```
-
-### Query Parameters
-```bash
-# Filtering and Search
-GET /api/rooming-lists?status=completed&search=ACL&sortBy=cutOffDate&sortOrder=desc
-```
-
-## 🎨 Frontend Architecture
-
-### Component Hierarchy
-```
-📁 src/
-├── 📄 App.js                    # Main application container
-├── 📁 components/
-│   ├── 📄 Header.js             # Navigation and auth buttons
-│   ├── 📄 Dashboard.js          # Main dashboard container
-│   ├── 📄 AuthModal.js          # Login/register modal
-│   ├── 📄 BookingsModal.js      # Detailed booking display
-│   ├── 📄 EventGroup.js         # Event grouping container
-│   ├── 📄 RoomingListCard.js    # Individual rooming list card
-│   └── 📄 FiltersAndSearch.js   # Search and filter controls
-├── 📁 context/
-│   └── 📄 AppContext.js         # Global state management
-└── 📁 services/
-    └── 📄 api.js                # API communication layer
-```
-
-### State Management Strategy
-
-**Global State (React Context):**
-- User authentication status
-- Rooming lists data and filtering
-- UI state (modals, loading states)
-- Error handling and notifications
-
-**Local Component State:**
-- Form inputs and validation
-- UI interactions (hover, focus)
-- Temporary display states
-
-### Key Design Patterns
-
-1. **Container/Presentational Components**: Clear separation of logic and UI
-2. **Custom Hooks**: Reusable stateful logic (`useCallback` for performance)
-3. **Error Boundaries**: Graceful error handling and user feedback
-4. **Responsive Design**: Mobile-first approach with Tailwind CSS
-
-## 🔧 Development Workflow
-
-### Available Scripts
-
-**Root Level Commands:**
-```bash
-npm run dev              # Start both frontend and backend
-npm run install:all      # Install all dependencies
-npm run docker:up        # Start with Docker
-npm run docker:down      # Stop Docker containers
-```
-
-**Backend Commands:**
-```bash
-npm run dev              # Development with nodemon
-npm start                # Production mode
-npm test                 # Run Jest tests
-```
-
-**Frontend Commands:**
-```bash
-npm start                # Development server
-npm run build            # Production build
-npm test                 # Run React tests
-```
-
-### Code Quality Tools
-
-- **ESLint**: Code linting and style enforcement
-- **Prettier**: Code formatting (if configured)
-- **Jest**: Unit testing framework
-- **Supertest**: API testing
-
-### Debugging
-
-**Backend Debugging:**
-- Comprehensive console logging with emojis for easy identification
-- Health check endpoint: `GET /health`
-- Database query logging in development mode
-
-**Frontend Debugging:**
-- React DevTools compatible
-- Console logging for API calls and state changes
-- Error boundaries for graceful error handling
-
-## 🔐 Security Implementation
-
-### Authentication Flow
-```
-1. User registers/logs in
-2. Server validates credentials
-3. JWT token issued with expiration
-4. Token stored in localStorage
-5. Token sent with each API request
-6. Middleware validates token on protected routes
-```
-
-### Security Measures
-- **Password Hashing**: bcrypt with salt rounds
-- **JWT Security**: Configurable secret and expiration
-- **Input Validation**: Comprehensive request validation
-- **SQL Injection Prevention**: Parameterized queries only
-- **CORS Configuration**: Controlled cross-origin access
-- **Rate Limiting**: Production-ready abuse protection
-
-## 🧪 Testing Strategy
-
-### Backend Testing
-```bash
-cd backend
-npm test                 # Run all tests
-npm test -- --coverage  # With coverage report
-```
-
-**Test Coverage:**
-- Authentication endpoints
-- CRUD operations
-- Data validation
-- Error handling scenarios
-
-### Frontend Testing
-```bash
-cd frontend
-npm test                 # Run React tests
-```
-
-**Testing Approach:**
-- Component rendering tests
-- User interaction testing
-- API integration tests
-- State management testing
-
-## 🚀 Production Deployment
-
-### Pre-deployment Checklist
-- [ ] Set `NODE_ENV=production`
-- [ ] Configure secure JWT secret
-- [ ] Set up proper CORS origins
-- [ ] Enable rate limiting
-- [ ] Configure production database path
-- [ ] Set up HTTPS certificates
-- [ ] Configure reverse proxy (if needed)
-
-### Docker Production Build
-```bash
-# Build production images
-docker-compose build --target production
-
-# Deploy with production configuration
-docker-compose -f docker-compose.prod.yml up -d
-```
-
-### Performance Optimizations
-- **Frontend**: Code splitting, lazy loading, asset optimization
-- **Backend**: Connection pooling, query optimization, caching headers
-- **Database**: Proper indexing, query optimization
-
-## 📈 Monitoring and Maintenance
-
-### Health Checks
-- **Backend**: `GET /health` endpoint with system status
-- **Database**: Connection and table validation
-- **Docker**: Built-in health check containers
-
-### Logging Strategy
-- **Development**: Detailed console logging with context
-- **Production**: Structured logging with levels
-- **Error Tracking**: Comprehensive error capture and reporting
-
-## 🤝 Contributing
-
-### Development Process
-1. **Fork** the repository
-2. **Create** a feature branch (`git checkout -b feature/amazing-feature`)
-3. **Commit** your changes (`git commit -m 'Add amazing feature'`)
-4. **Push** to the branch (`git push origin feature/amazing-feature`)
-5. **Open** a Pull Request
-
-### Code Standards
-- Follow existing code style and patterns
-- Add tests for new functionality
-- Update documentation for API changes
-- Ensure all tests pass before submitting
-
-### Reporting Issues
-When reporting bugs, please include:
-- Steps to reproduce
-- Expected vs actual behavior
-- Environment details (OS, Node version, etc.)
-- Console logs or error messages
+### Common Issues
+1. **"ECONNREFUSED"** - PostgreSQL not running
+2. **"Database does not exist"** - Create database first
+3. **"permission denied"** - Check PostgreSQL user permissions
+4. **JSON file not found** - Ensure JSON files are in project root
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License.
 
-## 🙏 Acknowledgments
+## 🤝 Contributing
 
-- **Design Pattern**: Based on provided rooming list management specifications
-- **Technology Stack**: Built with modern, production-ready technologies
-- **Architecture**: Follows industry best practices for maintainability and scalability
+1. Fork the repository
+2. Create a feature branch
+3. Make changes
+4. Test thoroughly
+5. Submit a pull request
 
 ---
 
-**Built with ❤️ as a comprehensive full-stack solution for rooming list management.**
+## 🎯 Assessment Requirements Fulfilled
 
-For questions, issues, or feature requests, please refer to the issue tracker or contact the development team. 
+✅ **PostgreSQL Database**: Set up with proper tables and relationships  
+✅ **RESTful API**: Node.js Express endpoints following REST standards  
+✅ **Insert Button**: Clears data and loads from JSON files  
+✅ **Dynamic Cards**: Rooming lists fetched from database  
+✅ **View Bookings**: Logs to console and shows in modal  
+✅ **Proper Relationships**: Junction table linking rooming lists to bookings 

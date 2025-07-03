@@ -5,9 +5,9 @@ import toast from 'react-hot-toast';
 const AppContext = createContext();
 
 const initialState = {
-  // Auth state
+  // Auth state (optional for now)
   user: null,
-  isAuthenticated: false,
+  isAuthenticated: true, // Set to true for no-auth mode
   isLoading: false,
   
   // Rooming lists state
@@ -78,7 +78,7 @@ const appReducer = (state, action) => {
       return {
         ...state,
         user: null,
-        isAuthenticated: false,
+        isAuthenticated: true, // Keep authenticated in no-auth mode
         roomingLists: [],
         filteredRoomingLists: []
       };
@@ -156,7 +156,6 @@ const appReducer = (state, action) => {
 export const AppProvider = ({ children }) => {
   const [state, dispatch] = useReducer(appReducer, initialState);
 
-  // ✅ Fix useEffect dependency warning with useCallback
   const applyFilters = useCallback(() => {
     console.log('🔍 Applying filters to', state.roomingLists.length, 'rooming lists');
     let filtered = [...state.roomingLists];
@@ -194,27 +193,7 @@ export const AppProvider = ({ children }) => {
     dispatch({ type: actionTypes.SET_FILTERED_ROOMING_LISTS, payload: filtered });
   }, [state.roomingLists, state.filters.status, state.filters.search, state.filters.sortBy, state.filters.sortOrder]);
 
-  // ONLY initialize auth on mount - NO automatic data fetching
-  useEffect(() => {
-    const token = localStorage.getItem('token');
-    console.log('🔐 Checking for existing auth token:', token ? 'Found' : 'Not found');
-    if (token) {
-      dispatch({ type: actionTypes.SET_USER, payload: { authenticated: true } });
-    }
-  }, []);
-
-  // Apply filters when data or filters change
-  useEffect(() => {
-    applyFilters();
-  }, [applyFilters]);
-
-  // API functions
-  const logout = useCallback(() => {
-    console.log('🚪 Logging out user');
-    dispatch({ type: actionTypes.LOGOUT });
-    toast.success('Logged out successfully');
-  }, []);
-
+  // Fetch rooming lists function
   const fetchRoomingLists = useCallback(async () => {
     try {
       console.log('📋 Starting to fetch rooming lists...');
@@ -234,15 +213,36 @@ export const AppProvider = ({ children }) => {
       
       dispatch({ type: actionTypes.SET_LOADING_ROOMING_LISTS, payload: false });
       
-      if (error.response?.status === 401) {
-        console.log('🚫 Authentication error, logging out user');
-        logout();
-      } else {
-        const message = error.response?.data?.error || error.message || 'Failed to fetch rooming lists';
-        toast.error(message);
-      }
+      const message = error.response?.data?.error || error.message || 'Failed to fetch rooming lists';
+      toast.error(message);
     }
-  }, [logout]);
+  }, []);
+
+  // Initialize app and fetch data on mount
+  useEffect(() => {
+    console.log('🚀 Initializing app - fetching rooming lists automatically');
+    const token = localStorage.getItem('token');
+    console.log('🔐 Checking for existing auth token:', token ? 'Found' : 'Not found');
+    
+    if (token) {
+      dispatch({ type: actionTypes.SET_USER, payload: { authenticated: true } });
+    }
+    
+    // Automatically fetch rooming lists since no auth is required
+    fetchRoomingLists();
+  }, [fetchRoomingLists]);
+
+  // Apply filters when data or filters change
+  useEffect(() => {
+    applyFilters();
+  }, [applyFilters]);
+
+  // API functions
+  const logout = useCallback(() => {
+    console.log('🚪 Logging out user');
+    dispatch({ type: actionTypes.LOGOUT });
+    toast.success('Logged out successfully');
+  }, []);
 
   const login = async (credentials) => {
     try {
@@ -257,7 +257,7 @@ export const AppProvider = ({ children }) => {
       toast.success('Login successful!');
       console.log('✅ Login completed successfully');
       
-      // Manually fetch data after successful login
+      // Refresh data after login
       fetchRoomingLists();
       
       return response.data;
@@ -283,7 +283,7 @@ export const AppProvider = ({ children }) => {
       toast.success('Registration successful!');
       console.log('✅ Registration completed successfully');
       
-      // Manually fetch data after successful registration
+      // Refresh data after registration
       fetchRoomingLists();
       
       return response.data;

@@ -1,71 +1,62 @@
 const express = require('express');
-const { pool } = require('../config/database-sqlite');
-const { authenticateToken } = require('../middleware/auth');
+const { pool } = require('../config/database');
 
 const router = express.Router();
 
 // Get all events
-router.get('/', authenticateToken, async (req, res) => {
+router.get('/', async (req, res) => {
   try {
-    const { search, sortBy, sortOrder } = req.query;
-    console.log('🔍 Fetching events with filters:', { search, sortBy, sortOrder });
+    const query = `
+      SELECT 
+        e.*,
+        COUNT(DISTINCT rl."roomingListId") as "roomingListCount",
+        COUNT(DISTINCT b."bookingId") as "bookingCount"
+      FROM events e
+      LEFT JOIN rooming_lists rl ON e."eventId" = rl."eventId"
+      LEFT JOIN bookings b ON e."eventId" = b."eventId"
+      GROUP BY e."eventId"
+      ORDER BY e.created_at DESC
+    `;
     
-    let query = 'SELECT * FROM events';
-    const params = [];
+    const result = await pool.query(query);
     
-    // Search functionality
-    if (search) {
-      query += ' WHERE LOWER("eventName") LIKE LOWER($1) OR LOWER(description) LIKE LOWER($1)';
-      params.push(`%${search}%`);
-    }
-    
-    // Sorting
-    if (sortBy === 'eventName') {
-      query += ` ORDER BY "eventName" ${sortOrder === 'desc' ? 'DESC' : 'ASC'}`;
-    } else {
-      query += ' ORDER BY "eventId"';
-    }
-    
-    const result = await pool.query(query, params);
-    console.log('✅ Found', result.rows.length, 'events');
-    res.json(result.rows);
-  } catch (error) {
-    console.error('❌ ERROR fetching events:', error);
-    res.status(500).json({ 
-      error: 'Failed to fetch events',
-      details: error.message 
+    res.json({
+      status: 'success',
+      data: result.rows,
+      count: result.rows.length
     });
+  } catch (error) {
+    console.error('❌ Error fetching events:', error);
+    res.status(500).json({ error: 'Failed to fetch events' });
   }
 });
 
 // Get a specific event by ID
-router.get('/:id', authenticateToken, async (req, res) => {
+router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    console.log('🔍 Fetching event ID:', id);
     
-    const result = await pool.query('SELECT * FROM events WHERE "eventId" = $1', [id]);
+    const query = 'SELECT * FROM events WHERE "eventId" = $1';
+    const result = await pool.query(query, [id]);
     
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Event not found' });
     }
     
-    console.log('✅ Event found:', result.rows[0].eventName);
-    res.json(result.rows[0]);
-  } catch (error) {
-    console.error('❌ ERROR fetching event:', error);
-    res.status(500).json({ 
-      error: 'Failed to fetch event',
-      details: error.message 
+    res.json({
+      status: 'success',
+      data: result.rows[0]
     });
+  } catch (error) {
+    console.error('❌ Error fetching event:', error);
+    res.status(500).json({ error: 'Failed to fetch event' });
   }
 });
 
 // Create a new event
-router.post('/', authenticateToken, async (req, res) => {
+router.post('/', async (req, res) => {
   try {
     const { eventName, description } = req.body;
-    console.log('🆕 Creating new event:', { eventName, description });
     
     // Validate required fields
     if (!eventName) {
@@ -74,81 +65,76 @@ router.post('/', authenticateToken, async (req, res) => {
       });
     }
     
-    const result = await pool.query(`
+    const query = `
       INSERT INTO events ("eventName", description)
       VALUES ($1, $2)
       RETURNING *
-    `, [eventName, description]);
+    `;
     
-    console.log('✅ Event created with ID:', result.rows[0].eventId);
-    res.status(201).json(result.rows[0]);
-  } catch (error) {
-    console.error('❌ ERROR creating event:', error);
-    res.status(500).json({ 
-      error: 'Failed to create event',
-      details: error.message 
+    const result = await pool.query(query, [eventName, description]);
+    
+    res.status(201).json({
+      status: 'success',
+      message: 'Event created successfully',
+      data: result.rows[0]
     });
+  } catch (error) {
+    console.error('❌ Error creating event:', error);
+    res.status(500).json({ error: 'Failed to create event' });
   }
 });
 
 // Update an event
-router.put('/:id', authenticateToken, async (req, res) => {
+router.put('/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const { eventName, description } = req.body;
-    console.log('🔄 Updating event ID:', id, 'with data:', { eventName, description });
     
-    const result = await pool.query(`
+    const query = `
       UPDATE events 
-      SET "eventName" = $1, description = $2
-      WHERE "eventId" = $3
+      SET "eventName" = COALESCE($2, "eventName"),
+          description = COALESCE($3, description)
+      WHERE "eventId" = $1
       RETURNING *
-    `, [eventName, description, id]);
+    `;
+    
+    const result = await pool.query(query, [id, eventName, description]);
     
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Event not found' });
     }
     
-    console.log('✅ Event updated successfully');
-    res.json(result.rows[0]);
-  } catch (error) {
-    console.error('❌ ERROR updating event:', error);
-    res.status(500).json({ 
-      error: 'Failed to update event',
-      details: error.message 
+    res.json({
+      status: 'success',
+      message: 'Event updated successfully',
+      data: result.rows[0]
     });
+  } catch (error) {
+    console.error('❌ Error updating event:', error);
+    res.status(500).json({ error: 'Failed to update event' });
   }
 });
 
 // Delete an event
-router.delete('/:id', authenticateToken, async (req, res) => {
+router.delete('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    console.log('🗑️ Deleting event ID:', id);
     
-    // Check if event has associated rooming lists
-    const roomingListsCheck = await pool.query('SELECT COUNT(*) as count FROM rooming_lists WHERE "eventId" = $1', [id]);
-    
-    if (parseInt(roomingListsCheck.rows[0].count) > 0) {
-      return res.status(400).json({ 
-        error: 'Cannot delete event with associated rooming lists. Delete rooming lists first.' 
-      });
-    }
-    
-    const result = await pool.query('DELETE FROM events WHERE "eventId" = $1 RETURNING *', [id]);
+    const query = 'DELETE FROM events WHERE "eventId" = $1 RETURNING *';
+    const result = await pool.query(query, [id]);
     
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Event not found' });
     }
     
-    console.log('✅ Event deleted successfully');
-    res.json({ message: 'Event deleted successfully', deletedItem: result.rows[0] });
-  } catch (error) {
-    console.error('❌ ERROR deleting event:', error);
-    res.status(500).json({ 
-      error: 'Failed to delete event',
-      details: error.message 
+    res.json({
+      status: 'success',
+      message: 'Event deleted successfully',
+      data: result.rows[0]
     });
+  } catch (error) {
+    console.error('❌ Error deleting event:', error);
+    res.status(500).json({ error: 'Failed to delete event' });
   }
 });
 

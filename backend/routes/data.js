@@ -1,149 +1,159 @@
 const express = require('express');
-const fs = require('fs').promises;
+const { pool, clearAllData } = require('../config/database');
+const fs = require('fs');
 const path = require('path');
-const { pool } = require('../config/database-sqlite');
-const { authenticateToken } = require('../middleware/auth');
 
 const router = express.Router();
 
-// Clear all data and insert from JSON files
-router.post('/insert-sample-data', authenticateToken, async (req, res) => {
+// GET /api/data/status - Check data status
+router.get('/status', async (req, res) => {
   try {
-    console.log('🌱 Starting data insertion from JSON files...');
-    
-    // Clear existing data (in correct order due to foreign key constraints)
-    await pool.query('DELETE FROM rooming_list_bookings');
-    await pool.query('DELETE FROM rooming_lists');
-    await pool.query('DELETE FROM bookings');
-    await pool.query('DELETE FROM events');
-    
-    // Reset SQLite auto-increment (no sequences in SQLite)
-    await pool.query('DELETE FROM sqlite_sequence WHERE name IN ("bookings", "rooming_lists", "events")');
+    const bookingsCount = await pool.query('SELECT COUNT(*) FROM bookings');
+    const roomingListsCount = await pool.query('SELECT COUNT(*) FROM rooming_lists');
+    const eventsCount = await pool.query('SELECT COUNT(*) FROM events');
+    const roomingListBookingsCount = await pool.query('SELECT COUNT(*) FROM rooming_list_bookings');
 
-    // Read JSON files from the main directory (parent directory of backend)
-    const mainDir = path.resolve(__dirname, '../..');
-    
-    console.log('📁 Reading JSON files from:', mainDir);
-    
-    const roomingListsPath = path.join(mainDir, 'rooming-lists.json');
-    const bookingsPath = path.join(mainDir, 'bookings.json');
-    const roomingListBookingsPath = path.join(mainDir, 'rooming-list-bookings.json');
-
-    // Read and parse JSON files
-    const roomingListsData = JSON.parse(await fs.readFile(roomingListsPath, 'utf8'));
-    const bookingsData = JSON.parse(await fs.readFile(bookingsPath, 'utf8'));
-    const roomingListBookingsData = JSON.parse(await fs.readFile(roomingListBookingsPath, 'utf8'));
-
-    console.log('📊 Data loaded:', {
-      roomingLists: roomingListsData.length,
-      bookings: bookingsData.length,
-      relationships: roomingListBookingsData.length
-    });
-
-    // Extract unique events from rooming lists data
-    const eventsMap = new Map();
-    roomingListsData.forEach(rl => {
-      if (!eventsMap.has(rl.eventId)) {
-        eventsMap.set(rl.eventId, {
-          eventId: rl.eventId,
-          eventName: rl.eventName
-        });
-      }
-    });
-    const eventsData = Array.from(eventsMap.values());
-
-    console.log('🎯 Extracted events:', eventsData.length);
-
-    // Insert events first
-    for (const event of eventsData) {
-      await pool.query(`
-        INSERT INTO events ("eventId", "eventName") VALUES ($1, $2)
-      `, [event.eventId, event.eventName]);
-    }
-    console.log('✅ Events inserted');
-
-    // Insert bookings
-    for (const booking of bookingsData) {
-      await pool.query(`
-        INSERT INTO bookings ("bookingId", "hotelId", "eventId", "guestName", "guestPhoneNumber", "checkInDate", "checkOutDate")
-        VALUES ($1, $2, $3, $4, $5, $6, $7)
-      `, [booking.bookingId, booking.hotelId, booking.eventId, booking.guestName, booking.guestPhoneNumber, booking.checkInDate, booking.checkOutDate]);
-    }
-    console.log('✅ Bookings inserted');
-
-    // Insert rooming lists (without eventName since it's not in the database schema)
-    for (const roomingList of roomingListsData) {
-      await pool.query(`
-        INSERT INTO rooming_lists ("roomingListId", "eventId", "hotelId", "rfpName", "cutOffDate", status, "agreement_type")
-        VALUES ($1, $2, $3, $4, $5, $6, $7)
-      `, [roomingList.roomingListId, roomingList.eventId, roomingList.hotelId, roomingList.rfpName, roomingList.cutOffDate, roomingList.status, roomingList.agreement_type]);
-    }
-    console.log('✅ Rooming lists inserted');
-
-    // Insert rooming list bookings relationships
-    for (const relation of roomingListBookingsData) {
-      await pool.query(`
-        INSERT INTO rooming_list_bookings ("roomingListId", "bookingId")
-        VALUES ($1, $2)
-      `, [relation.roomingListId, relation.bookingId]);
-    }
-    console.log('✅ Relationships inserted');
-    
-    res.json({ 
-      message: 'Sample data inserted successfully from JSON files',
-      summary: {
-        events: eventsData.length,
-        bookings: bookingsData.length,
-        roomingLists: roomingListsData.length,
-        relationships: roomingListBookingsData.length
-      },
-      files: {
-        roomingLists: 'rooming-lists.json',
-        bookings: 'bookings.json',
-        relationships: 'rooming-list-bookings.json'
+    res.json({
+      status: 'success',
+      data: {
+        bookings: parseInt(bookingsCount.rows[0].count),
+        roomingLists: parseInt(roomingListsCount.rows[0].count),
+        events: parseInt(eventsCount.rows[0].count),
+        roomingListBookings: parseInt(roomingListBookingsCount.rows[0].count)
       }
     });
   } catch (error) {
-    console.error('❌ Error inserting data from JSON files:', error);
-    
-    // Provide more specific error messages
-    if (error.code === 'ENOENT') {
-      return res.status(400).json({ 
-        error: 'JSON file not found. Please ensure rooming-lists.json, bookings.json, and rooming-list-bookings.json exist in the main directory.',
-        missingFile: error.path
-      });
-    }
-    
-    if (error instanceof SyntaxError) {
-      return res.status(400).json({ 
-        error: 'Invalid JSON format in one of the files. Please check the JSON syntax.',
-        details: error.message
-      });
-    }
-    
-    res.status(500).json({ 
-      error: 'Internal server error while inserting data from JSON files',
-      details: process.env.NODE_ENV === 'development' ? error.message : 'Please check server logs'
-    });
+    console.error('❌ Error getting data status:', error);
+    res.status(500).json({ error: 'Failed to get data status' });
   }
 });
 
-// Clear all data
-router.delete('/clear-all', authenticateToken, async (req, res) => {
+// POST /api/data/insert - Clear and insert data from JSON files
+router.post('/insert', async (req, res) => {
+  const client = await pool.connect();
+  
   try {
-    // Clear all data (in correct order due to foreign key constraints)
-    await pool.query('DELETE FROM rooming_list_bookings');
-    await pool.query('DELETE FROM rooming_lists');
-    await pool.query('DELETE FROM bookings');
-    await pool.query('DELETE FROM events');
+    await client.query('BEGIN');
     
-    // Reset SQLite auto-increment
-    await pool.query('DELETE FROM sqlite_sequence WHERE name IN ("bookings", "rooming_lists", "events")');
+    // Step 1: Clear all existing data
+    console.log('🗑️ Clearing all existing data...');
+    await clearAllData();
     
-    res.json({ message: 'All data cleared successfully' });
+    // Step 2: Read JSON files
+    const roomingListsPath = path.join(__dirname, '../../rooming-lists.json');
+    const bookingsPath = path.join(__dirname, '../../bookings.json');
+    const roomingListBookingsPath = path.join(__dirname, '../../rooming-list-bookings.json');
+    
+    if (!fs.existsSync(roomingListsPath)) {
+      throw new Error('rooming-lists.json file not found');
+    }
+    if (!fs.existsSync(bookingsPath)) {
+      throw new Error('bookings.json file not found');
+    }
+    if (!fs.existsSync(roomingListBookingsPath)) {
+      throw new Error('rooming-list-bookings.json file not found');
+    }
+    
+    const roomingListsData = JSON.parse(fs.readFileSync(roomingListsPath, 'utf8'));
+    const bookingsData = JSON.parse(fs.readFileSync(bookingsPath, 'utf8'));
+    const roomingListBookingsData = JSON.parse(fs.readFileSync(roomingListBookingsPath, 'utf8'));
+    
+    console.log('📁 JSON files loaded successfully');
+    console.log(`📋 Rooming Lists: ${roomingListsData.length} records`);
+    console.log(`🏨 Bookings: ${bookingsData.length} records`);
+    console.log(`🔗 Rooming List Bookings: ${roomingListBookingsData.length} records`);
+    
+    // Step 3: Insert Events (extract unique events from bookings)
+    const uniqueEvents = [...new Set(bookingsData.map(booking => booking.eventId))];
+    for (const eventId of uniqueEvents) {
+      await client.query(
+        `INSERT INTO events ("eventId", "eventName") VALUES ($1, $2) ON CONFLICT ("eventId") DO NOTHING`,
+        [eventId, `Event ${eventId}`]
+      );
+    }
+    console.log(`✅ Inserted ${uniqueEvents.length} events`);
+    
+    // Step 4: Insert Bookings
+    for (const booking of bookingsData) {
+      await client.query(
+        `INSERT INTO bookings ("bookingId", "hotelId", "eventId", "guestName", "guestPhoneNumber", "checkInDate", "checkOutDate") 
+         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [
+          booking.bookingId,
+          booking.hotelId,
+          booking.eventId,
+          booking.guestName,
+          booking.guestPhoneNumber,
+          booking.checkInDate,
+          booking.checkOutDate
+        ]
+      );
+    }
+    console.log(`✅ Inserted ${bookingsData.length} bookings`);
+    
+    // Step 5: Insert Rooming Lists
+    for (const roomingList of roomingListsData) {
+      await client.query(
+        `INSERT INTO rooming_lists ("roomingListId", "eventId", "hotelId", "rfpName", "cutOffDate", "status", "agreement_type") 
+         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [
+          roomingList.roomingListId,
+          roomingList.eventId,
+          roomingList.hotelId,
+          roomingList.rfpName,
+          roomingList.cutOffDate,
+          roomingList.status || 'Active',
+          roomingList.agreement_type
+        ]
+      );
+    }
+    console.log(`✅ Inserted ${roomingListsData.length} rooming lists`);
+    
+    // Step 6: Insert Rooming List Bookings (relationships)
+    for (const relation of roomingListBookingsData) {
+      await client.query(
+        `INSERT INTO rooming_list_bookings ("roomingListId", "bookingId") VALUES ($1, $2)`,
+        [relation.roomingListId, relation.bookingId]
+      );
+    }
+    console.log(`✅ Inserted ${roomingListBookingsData.length} rooming list bookings relationships`);
+    
+    await client.query('COMMIT');
+    
+    res.json({
+      status: 'success',
+      message: 'Data inserted successfully from JSON files',
+      data: {
+        events: uniqueEvents.length,
+        bookings: bookingsData.length,
+        roomingLists: roomingListsData.length,
+        roomingListBookings: roomingListBookingsData.length
+      }
+    });
+    
   } catch (error) {
-    console.error('Error clearing data:', error);
-    res.status(500).json({ error: 'Internal server error while clearing data' });
+    await client.query('ROLLBACK');
+    console.error('❌ Error inserting data:', error);
+    res.status(500).json({ 
+      error: 'Failed to insert data from JSON files',
+      details: error.message 
+    });
+  } finally {
+    client.release();
+  }
+});
+
+// DELETE /api/data/clear - Clear all data
+router.delete('/clear', async (req, res) => {
+  try {
+    await clearAllData();
+    res.json({
+      status: 'success',
+      message: 'All data cleared successfully'
+    });
+  } catch (error) {
+    console.error('❌ Error clearing data:', error);
+    res.status(500).json({ error: 'Failed to clear data' });
   }
 });
 

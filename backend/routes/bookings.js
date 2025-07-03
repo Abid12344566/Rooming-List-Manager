@@ -1,252 +1,149 @@
 const express = require('express');
-const { pool } = require('../config/database-sqlite');
-const { authenticateToken } = require('../middleware/auth');
+const { pool } = require('../config/database');
 
 const router = express.Router();
 
 // Get all bookings
-router.get('/', authenticateToken, async (req, res) => {
+router.get('/', async (req, res) => {
   try {
-    const { search, status, dateFrom, dateTo, sortBy, sortOrder } = req.query;
-    console.log('🔍 Fetching bookings with filters:', { search, status, dateFrom, dateTo, sortBy, sortOrder });
+    const query = `
+      SELECT 
+        b.*,
+        e."eventName"
+      FROM bookings b
+      LEFT JOIN events e ON b."eventId" = e."eventId"
+      ORDER BY b."checkInDate"
+    `;
     
-    let query = 'SELECT * FROM bookings';
-    const conditions = [];
-    const params = [];
+    const result = await pool.query(query);
     
-    // Search functionality
-    if (search) {
-      conditions.push(`(
-        LOWER("guestName") LIKE LOWER($${params.length + 1}) OR 
-        LOWER("guestEmail") LIKE LOWER($${params.length + 1}) OR 
-        LOWER("hotelName") LIKE LOWER($${params.length + 1})
-      )`);
-      params.push(`%${search}%`);
-    }
-    
-    // Status filter
-    if (status) {
-      conditions.push(`status = $${params.length + 1}`);
-      params.push(status);
-    }
-    
-    // Date range filter
-    if (dateFrom) {
-      conditions.push(`"checkInDate" >= $${params.length + 1}`);
-      params.push(dateFrom);
-    }
-    
-    if (dateTo) {
-      conditions.push(`"checkOutDate" <= $${params.length + 1}`);
-      params.push(dateTo);
-    }
-    
-    if (conditions.length > 0) {
-      query += ` WHERE ${conditions.join(' AND ')}`;
-    }
-    
-    // Sorting
-    if (sortBy === 'checkInDate') {
-      query += ` ORDER BY "checkInDate" ${sortOrder === 'desc' ? 'DESC' : 'ASC'}`;
-    } else if (sortBy === 'guestName') {
-      query += ` ORDER BY "guestName" ${sortOrder === 'desc' ? 'DESC' : 'ASC'}`;
-    } else {
-      query += ' ORDER BY "bookingId"';
-    }
-    
-    const result = await pool.query(query, params);
-    console.log('✅ Found', result.rows.length, 'bookings');
-    res.json(result.rows);
-  } catch (error) {
-    console.error('❌ ERROR fetching bookings:', error);
-    res.status(500).json({ 
-      error: 'Failed to fetch bookings',
-      details: error.message 
+    res.json({
+      status: 'success',
+      data: result.rows,
+      count: result.rows.length
     });
+  } catch (error) {
+    console.error('❌ Error fetching bookings:', error);
+    res.status(500).json({ error: 'Failed to fetch bookings' });
   }
 });
 
 // Get a specific booking by ID
-router.get('/:id', authenticateToken, async (req, res) => {
+router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    console.log('🔍 Fetching booking ID:', id);
     
-    const result = await pool.query('SELECT * FROM bookings WHERE "bookingId" = $1', [id]);
+    const query = `
+      SELECT 
+        b.*,
+        e."eventName"
+      FROM bookings b
+      LEFT JOIN events e ON b."eventId" = e."eventId"
+      WHERE b."bookingId" = $1
+    `;
+    
+    const result = await pool.query(query, [id]);
     
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Booking not found' });
     }
     
-    console.log('✅ Booking found for guest:', result.rows[0].guestName);
-    res.json(result.rows[0]);
-  } catch (error) {
-    console.error('❌ ERROR fetching booking:', error);
-    res.status(500).json({ 
-      error: 'Failed to fetch booking',
-      details: error.message 
+    res.json({
+      status: 'success',
+      data: result.rows[0]
     });
+  } catch (error) {
+    console.error('❌ Error fetching booking:', error);
+    res.status(500).json({ error: 'Failed to fetch booking' });
   }
 });
 
 // Create a new booking
-router.post('/', authenticateToken, async (req, res) => {
+router.post('/', async (req, res) => {
   try {
-    const { 
-      hotelId, 
-      guestName, 
-      guestEmail, 
-      guestPhone, 
-      checkInDate, 
-      checkOutDate, 
-      roomType, 
-      specialRequests, 
-      hotelName, 
-      status 
-    } = req.body;
-    
-    console.log('🆕 Creating new booking for guest:', guestName);
+    const { hotelId, eventId, guestName, guestPhoneNumber, checkInDate, checkOutDate } = req.body;
     
     // Validate required fields
-    if (!guestName || !guestEmail || !checkInDate || !checkOutDate) {
+    if (!hotelId || !eventId || !guestName || !checkInDate || !checkOutDate) {
       return res.status(400).json({ 
-        error: 'Missing required fields: guestName, guestEmail, checkInDate, checkOutDate' 
+        error: 'Missing required fields: hotelId, eventId, guestName, checkInDate, checkOutDate' 
       });
     }
     
-    // Validate dates
-    const checkIn = new Date(checkInDate);
-    const checkOut = new Date(checkOutDate);
-    
-    if (checkOut <= checkIn) {
-      return res.status(400).json({ 
-        error: 'Check-out date must be after check-in date' 
-      });
-    }
-    
-    const result = await pool.query(`
-      INSERT INTO bookings (
-        "hotelId", "guestName", "guestEmail", "guestPhone", 
-        "checkInDate", "checkOutDate", "roomType", "specialRequests", 
-        "hotelName", status
-      )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+    const query = `
+      INSERT INTO bookings ("hotelId", "eventId", "guestName", "guestPhoneNumber", "checkInDate", "checkOutDate")
+      VALUES ($1, $2, $3, $4, $5, $6)
       RETURNING *
-    `, [
-      hotelId, 
-      guestName, 
-      guestEmail, 
-      guestPhone, 
-      checkInDate, 
-      checkOutDate, 
-      roomType, 
-      specialRequests, 
-      hotelName, 
-      status || 'Confirmed'
-    ]);
+    `;
     
-    console.log('✅ Booking created with ID:', result.rows[0].bookingId);
-    res.status(201).json(result.rows[0]);
-  } catch (error) {
-    console.error('❌ ERROR creating booking:', error);
-    res.status(500).json({ 
-      error: 'Failed to create booking',
-      details: error.message 
+    const result = await pool.query(query, [hotelId, eventId, guestName, guestPhoneNumber, checkInDate, checkOutDate]);
+    
+    res.status(201).json({
+      status: 'success',
+      message: 'Booking created successfully',
+      data: result.rows[0]
     });
+  } catch (error) {
+    console.error('❌ Error creating booking:', error);
+    res.status(500).json({ error: 'Failed to create booking' });
   }
 });
 
 // Update a booking
-router.put('/:id', authenticateToken, async (req, res) => {
+router.put('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { 
-      hotelId, 
-      guestName, 
-      guestEmail, 
-      guestPhone, 
-      checkInDate, 
-      checkOutDate, 
-      roomType, 
-      specialRequests, 
-      hotelName, 
-      status 
-    } = req.body;
+    const { hotelId, eventId, guestName, guestPhoneNumber, checkInDate, checkOutDate } = req.body;
     
-    console.log('🔄 Updating booking ID:', id, 'for guest:', guestName);
-    
-    // Validate dates if provided
-    if (checkInDate && checkOutDate) {
-      const checkIn = new Date(checkInDate);
-      const checkOut = new Date(checkOutDate);
-      
-      if (checkOut <= checkIn) {
-        return res.status(400).json({ 
-          error: 'Check-out date must be after check-in date' 
-        });
-      }
-    }
-    
-    const result = await pool.query(`
+    const query = `
       UPDATE bookings 
-      SET "hotelId" = $1, "guestName" = $2, "guestEmail" = $3, "guestPhone" = $4,
-          "checkInDate" = $5, "checkOutDate" = $6, "roomType" = $7, 
-          "specialRequests" = $8, "hotelName" = $9, status = $10
-      WHERE "bookingId" = $11
+      SET "hotelId" = COALESCE($2, "hotelId"),
+          "eventId" = COALESCE($3, "eventId"),
+          "guestName" = COALESCE($4, "guestName"),
+          "guestPhoneNumber" = COALESCE($5, "guestPhoneNumber"),
+          "checkInDate" = COALESCE($6, "checkInDate"),
+          "checkOutDate" = COALESCE($7, "checkOutDate")
+      WHERE "bookingId" = $1
       RETURNING *
-    `, [
-      hotelId, 
-      guestName, 
-      guestEmail, 
-      guestPhone, 
-      checkInDate, 
-      checkOutDate, 
-      roomType, 
-      specialRequests, 
-      hotelName, 
-      status, 
-      id
-    ]);
+    `;
+    
+    const result = await pool.query(query, [id, hotelId, eventId, guestName, guestPhoneNumber, checkInDate, checkOutDate]);
     
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Booking not found' });
     }
     
-    console.log('✅ Booking updated successfully');
-    res.json(result.rows[0]);
-  } catch (error) {
-    console.error('❌ ERROR updating booking:', error);
-    res.status(500).json({ 
-      error: 'Failed to update booking',
-      details: error.message 
+    res.json({
+      status: 'success',
+      message: 'Booking updated successfully',
+      data: result.rows[0]
     });
+  } catch (error) {
+    console.error('❌ Error updating booking:', error);
+    res.status(500).json({ error: 'Failed to update booking' });
   }
 });
 
 // Delete a booking
-router.delete('/:id', authenticateToken, async (req, res) => {
+router.delete('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    console.log('🗑️ Deleting booking ID:', id);
     
-    // First remove from rooming list associations
-    await pool.query('DELETE FROM rooming_list_bookings WHERE "bookingId" = $1', [id]);
-    
-    // Then delete the booking
-    const result = await pool.query('DELETE FROM bookings WHERE "bookingId" = $1 RETURNING *', [id]);
+    const query = 'DELETE FROM bookings WHERE "bookingId" = $1 RETURNING *';
+    const result = await pool.query(query, [id]);
     
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Booking not found' });
     }
     
-    console.log('✅ Booking deleted successfully');
-    res.json({ message: 'Booking deleted successfully', deletedItem: result.rows[0] });
-  } catch (error) {
-    console.error('❌ ERROR deleting booking:', error);
-    res.status(500).json({ 
-      error: 'Failed to delete booking',
-      details: error.message 
+    res.json({
+      status: 'success',
+      message: 'Booking deleted successfully',
+      data: result.rows[0]
     });
+  } catch (error) {
+    console.error('❌ Error deleting booking:', error);
+    res.status(500).json({ error: 'Failed to delete booking' });
   }
 });
 
